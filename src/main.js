@@ -43,10 +43,13 @@ function build({ t = null, paused = false } = {}) {
 
 const now = () => clamp01((master.time() - HOLD_START) / duration);
 
+// 틱은 화면 주사율대로 돈다. 무대는 바뀐 것이 있을 때만 그리고, 시계 글자도 바뀔 때만 쓴다
+let clock = "";
 gsap.ticker.add(() => {
   const t = now();
   stage.update(t);
-  clockOut.textContent = `t ${t.toFixed(2)}`;
+  const text = `t ${t.toFixed(2)}`;
+  if (text !== clock) clockOut.textContent = clock = text;
 });
 
 function setPlaying(next) {
@@ -136,7 +139,7 @@ addEventListener("resize", () => stage.layout());
 
 // ?look=film&t=0.48 — 룩과 순간을 주소로 건넨다. t가 있으면 그 순간에 멈춘 채로 연다
 const query = new URLSearchParams(location.search);
-const startLook = LOOKS[query.get("look")] ? query.get("look") : "glow";
+const startLook = LOOKS[query.get("look")] ? query.get("look") : "paper";
 const startT = query.has("t") ? clamp01(Number(query.get("t")) || 0) : null;
 
 durationOut.textContent = `${duration.toFixed(1)}s`;

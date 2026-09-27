@@ -16,7 +16,7 @@
 }
 </script>
 </head>
-<body data-theme="dark">
+<body data-theme="light">
 
 <header class="bar">
   <span class="mark">LLM MOTION GRAPHIC</span>
@@ -31,21 +31,21 @@
     </div>
 
     <div class="seg" role="group" aria-label="보조선">
-      <button type="button" data-toggle="ticks" class="on" title="같은 시간마다 공이 있던 자리">SPACING</button>
-      <button type="button" data-toggle="ghosts" class="on" title="지나온 자리의 잔상">TRAIL</button>
-      <button type="button" data-toggle="squash" class="on" title="빠를수록 늘어난다">SQUASH</button>
+      <button type="button" data-toggle="ticks" title="같은 시간마다 공이 있던 자리">SPACING</button>
+      <button type="button" data-toggle="ghosts" title="지나온 자리의 잔상">TRAIL</button>
+      <button type="button" data-toggle="squash" title="빠를수록 늘어난다">SQUASH</button>
     </div>
 
     <div class="seg" role="group" aria-label="룩">
       <button type="button" data-look="clean" title="1 — 보정 없음">CLEAN</button>
-      <button type="button" data-look="glow" class="on" title="2 — 블룸과 차가운 어둠">GLOW</button>
+      <button type="button" data-look="glow" title="2 — 블룸과 깊은 어둠">GLOW</button>
       <button type="button" data-look="film" title="3 — 들뜬 검정과 입자">FILM</button>
-      <button type="button" data-look="paper" title="4 — 밝은 종이">PAPER</button>
+      <button type="button" data-look="paper" class="on" title="4 — 밝은 종이">PAPER</button>
     </div>
 
     <label class="dial">
-      <span>DURATION <b id="durationOut">1.4s</b></span>
-      <input id="duration" type="range" min="40" max="400" value="140" aria-label="한 번 가는 데 걸리는 시간">
+      <span>DURATION <b id="durationOut">0.4s</b></span>
+      <input id="duration" type="range" min="40" max="400" value="40" aria-label="한 번 가는 데 걸리는 시간">
     </label>
 
     <span class="clock" id="clock">t 0.00</span>

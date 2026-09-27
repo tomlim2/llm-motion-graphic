@@ -1,7 +1,11 @@
 // three.js 무대. 보이는 것은 전부 여기서 정한다 — 움직임은 GSAP이 정하고 여기서는 읽기만 한다.
 //
-// 좌표는 CSS 픽셀 그대로 쓴다. 직교 카메라가 화면과 같은 크기의 판을 보게 해 두면 월드 좌표가
-// 곧 화면 좌표가 되어, 위에 겹치는 HTML 글자와 어긋날 일이 없다. y만 뒤집힌다.
+// 좌표는 무대의 CSS 픽셀 그대로 쓴다. 직교 카메라가 픽셀과 같은 크기로 무대를 보게 해 두면 월드
+// 좌표가 곧 무대 좌표가 되어, 위에 겹치는 HTML 글자와 어긋날 일이 없다. y만 뒤집힌다.
+//
+// 캔버스는 무대 전체가 아니라 화면 높이만 하다. 무대를 따라 내려가다 화면 위쪽에 달라붙고(sticky),
+// 카메라와 글자를 스크롤만큼 옮겨 지금 보이는 띠만 그린다. 무대가 길어져도 그리는 픽셀은 늘지 않는다.
+// 그리고 그림이 바뀔 때만 그린다 — 공이 서 있는 동안에는 입자가 바뀌는 초당 24번뿐이다.
 //
 // 그리는 순서: 장면 → 블룸 → 톤 매핑 → 색보정. 색보정을 톤 매핑 뒤에 두는 이유는 looks.js 에.
 
@@ -25,41 +29,27 @@ const SAMPLES = 240;
 const TICKS = 12; // 간격표: 같은 시간 간격으로 찍은 공의 자리
 const GHOSTS = 3;
 const GHOST_GAP = 0.03;
+const GRAIN_FPS = 24; // 입자는 필름처럼 초당 24번 바뀐다. 공이 서 있을 때 다시 그리는 빈도도 이것이다
 
 const Y = (y) => -y; // 화면 y → 월드 y
 
-// 줄마다의 색. HSL로 색상만 돌리면 노랑은 밝고 파랑은 어둡게 보여, 밝은 종이 위에서는 노랑 줄
-// 이름이 사라지고 어두운 바탕에서는 파랑 줄이 가라앉는다. OKLCH는 사람 눈에 같은 밝기로 보이게
-// 짠 색 공간이라 색상만 돌려도 밝기가 고르다. OKLab → 선형 sRGB 행렬은 Björn Ottosson의 것.
-function oklch(L, C, hue) {
-  const h = (hue * Math.PI) / 180;
-  const a = C * Math.cos(h);
-  const b = C * Math.sin(h);
-  const l = (L + 0.3963377774 * a + 0.2158037573 * b) ** 3;
-  const m = (L - 0.1055613458 * a - 0.0638541728 * b) ** 3;
-  const s = (L - 0.0894841775 * a - 1.291485548 * b) ** 3;
-  const clip = (v) => Math.min(1, Math.max(0, v));
-  return new THREE.Color().setRGB(
-    clip(4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s),
-    clip(-1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s),
-    clip(-0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s),
-    THREE.LinearSRGBColorSpace
-  );
-}
-
-const rowColor = (index, count, theme) =>
-  theme === "light" ? oklch(0.6, 0.14, 20 + (index / (count - 1)) * 300) : oklch(0.8, 0.12, 20 + (index / (count - 1)) * 300);
-
 export function createStage(host, motions, proxies) {
-  const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
+  // 전력은 기본값에 맡긴다. high-performance를 달면 그래픽 카드가 둘인 맥에서 외장 GPU를 깨운다
+  const renderer = new THREE.WebGLRenderer({ antialias: false });
   const dpr = Math.min(window.devicePixelRatio, 2);
   renderer.setPixelRatio(dpr);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
-  host.append(renderer.domElement);
+
+  // 화면에 보이는 띠. 캔버스와 글자를 같이 담아, 스크롤할 때 둘을 같은 틱에 함께 옮긴다 — 글자만
+  // 브라우저가 따로 굴리면 한 프레임씩 어긋나 그림 위에서 미끄러진다
+  const view = document.createElement("div");
+  view.className = "view";
+  view.append(renderer.domElement);
+  host.append(view);
 
   const labels = document.createElement("div");
   labels.className = "labels";
-  host.append(labels);
+  view.append(labels);
 
   const scene = new THREE.Scene();
   const camera = new THREE.OrthographicCamera(0, 1, 0, -1, -500, 500);
@@ -97,8 +87,15 @@ export function createStage(host, motions, proxies) {
   let lineMaterials = [];
   let geometry = null;
   let mode = "speed";
-  let options = { squash: true, ticks: true, ghosts: true };
+  let options = { squash: false, ticks: false, ghosts: false };
   let look = null;
+  let viewH = 0;
+  let offset = NaN; // 무대 맨 위에서 보이는 띠까지의 거리. 스크롤을 따라 바뀐다
+  let dirty = true; // t가 그대로여도 다시 그려야 하는가 — 짓기, 룩, 보조선, 스크롤
+  let shownT = NaN;
+  let shownGrain = NaN;
+
+  addEventListener("scroll", () => (dirty = true), { passive: true });
 
   function line(points, color, width, opacity = 1) {
     const geo = new LineGeometry();
@@ -130,7 +127,8 @@ export function createStage(host, motions, proxies) {
   function buildRow(motion, index, g) {
     const ink = look.stage;
     const top = TOP + index * g.row;
-    const color = rowColor(index, motions.length, look.theme);
+    const color = new THREE.Color(ink.ink); // 흑백이다. 줄마다 색을 나누지 않고 모두 먹색으로 그린다
+    const ballColor = look.ball.color ? new THREE.Color(look.ball.color) : color; // 잔상도 이 색을 따른다
     const group = new THREE.Group();
 
     // -- 그래프 --------------------------------------------------------------------------
@@ -194,17 +192,25 @@ export function createStage(host, motions, proxies) {
     for (let k = 1; k <= GHOSTS; k += 1) {
       const ghost = new THREE.Mesh(
         ballGeometry,
-        new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.2 - k * 0.05, depthWrite: false, blending })
+        new THREE.MeshBasicMaterial({ color: ballColor, transparent: true, opacity: 0.2 - k * 0.05, depthWrite: false, blending })
       );
       ghost.position.z = 8 - k;
       group.add(ghost);
       ghosts.push(ghost);
     }
 
-    // 클리어코트를 입힌 공. 반사가 한 겹 위에 따로 얹혀 사탕처럼 읽힌다
+    // 공의 겉은 룩이 정한다. 클리어코트를 입히면 반사가 한 겹 위에 따로 얹혀 사탕처럼 읽히고,
+    // 반사를 다 끄면 빛을 고르게 먹는 종이가 된다
     const ball = new THREE.Mesh(
       ballGeometry,
-      new THREE.MeshPhysicalMaterial({ color, roughness: 0.34, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.12 })
+      new THREE.MeshPhysicalMaterial({
+        color: ballColor,
+        roughness: look.ball.roughness,
+        metalness: 0,
+        clearcoat: look.ball.clearcoat,
+        clearcoatRoughness: 0.12,
+        specularIntensity: look.ball.specular
+      })
     );
     ball.position.z = 10;
     group.add(ball);
@@ -216,13 +222,13 @@ export function createStage(host, motions, proxies) {
     label.className = "label";
     label.style.left = `${g.tx0}px`;
     label.style.top = `${top + 2}px`;
-    label.innerHTML = `<b style="color:#${color.getHexString()}">${motion.name}</b><code>${codeOf(motion)}</code><span>${motion.words}</span>`;
+    label.innerHTML = `<b>${motion.name}</b><code>${codeOf(motion)}</code><span>${motion.words}</span>`;
     labels.append(label);
 
     const peak = document.createElement("div");
     peak.className = "peak";
-    peak.style.left = `${g.gx1 - 4}px`;
-    peak.style.top = `${gTop + 3}px`;
+    peak.style.left = `${g.gx1 + 8}px`;
+    peak.style.top = `${gTop - 2}px`;
     const top1 = mode === "speed" ? Math.max(...speeds[index].map(Math.abs)) : Math.max(...values);
     peak.textContent = mode === "speed" ? `peak ${top1.toFixed(1)}×` : top1 > 1.001 ? `max ${top1.toFixed(2)}` : "";
     if (peak.textContent) labels.append(peak);
@@ -234,20 +240,22 @@ export function createStage(host, motions, proxies) {
     if (!look) return;
     dispose();
     const W = host.clientWidth;
-    const room = window.innerHeight - host.getBoundingClientRect().top - 12;
-    const row = Math.round(Math.max(62, Math.min(94, (room - TOP * 2) / motions.length)));
+    // 그래프 칸이 먼저다. 칸은 정사각형이고 한 변은 무대 너비를 따르며, 줄 높이는 거기에 위아래
+    // 여백(8, 10)을 더한 만큼이다. 열두 줄이 한 화면에 다 들어오지 않아 스크롤이 생긴다
+    const G = Math.round(Math.max(128, Math.min(200, W * 0.24)));
+    const row = G + 18;
     const H = TOP * 2 + motions.length * row;
+    viewH = Math.min(H, window.innerHeight);
 
     host.style.height = `${H}px`;
-    renderer.setSize(W, H);
-    composer.setSize(W, H);
-    grade.uniforms.resolution.value.set(W * dpr, H * dpr);
+    view.style.height = `${viewH}px`;
+    renderer.setSize(W, viewH);
+    composer.setSize(W, viewH);
+    grade.uniforms.resolution.value.set(W * dpr, viewH * dpr);
     camera.right = W;
-    camera.bottom = -H;
-    camera.updateProjectionMatrix();
+    offset = NaN; // 띠의 크기가 바뀌었으니 다음에 그릴 때 카메라를 새로 맞춘다
 
     const pad = 22;
-    const G = Math.round(Math.max(170, Math.min(300, W * 0.24)));
 
     // 트랙은 0(출발)과 1(도착)이 아니라 모든 움직임이 닿는 범위를 담는다. 스프링은 목표를
     // 37%나 지나치고 예비 동작은 11% 뒤로 물러난다 — 1을 화면 끝에 붙여 두면 그 넘침이 화면
@@ -258,14 +266,14 @@ export function createStage(host, motions, proxies) {
       reachLo = Math.min(reachLo, f);
       reachHi = Math.max(reachHi, f);
     }
-    const left = pad + G + 40 + RADIUS;
+    const left = pad + G + 84 + RADIUS; // 칸과 트랙 사이에 최고 속도 글자가 들어간다
     const right = W - pad - RADIUS * 1.6;
     const unit = (right - left) / (reachHi - reachLo);
     const tx0 = left - reachLo * unit;
     geometry = { W, H, row, gx0: pad, gx1: pad + G, G, tx0, tx1: tx0 + unit, span: unit, left, right };
 
     rows = motions.map((motion, index) => buildRow(motion, index, geometry));
-    for (const material of lineMaterials) material.resolution.set(W, H);
+    for (const material of lineMaterials) material.resolution.set(W, viewH);
     applyOptions();
   }
 
@@ -274,6 +282,19 @@ export function createStage(host, motions, proxies) {
       row.ticks.visible = options.ticks;
       for (const ghost of row.ghosts) ghost.visible = options.ghosts;
     }
+    dirty = true;
+  }
+
+  // 띠가 무대 안 어디쯤 붙어 있는지 재서, 카메라와 글자를 그만큼 내려 보낸다. 무대 밖으로 나간
+  // 줄은 카메라에 걸리지 않아 three.js가 알아서 건너뛴다
+  function place() {
+    const next = view.getBoundingClientRect().top - host.getBoundingClientRect().top - host.clientTop;
+    if (next === offset) return;
+    offset = next;
+    camera.top = Y(offset);
+    camera.bottom = Y(offset + viewH);
+    camera.updateProjectionMatrix();
+    labels.style.transform = `translateY(${-offset}px)`;
   }
 
   function applyLook(next) {
@@ -298,7 +319,6 @@ export function createStage(host, motions, proxies) {
     // 글자는 HTML이라 셰이더를 거치지 않는다. 색만이라도 룩을 따라가게 넘겨 준다
     host.style.setProperty("--stage-ink", look.stage.ink);
     host.style.setProperty("--stage-muted", look.stage.muted);
-    host.style.setProperty("--stage-panel", look.stage.panel);
     host.style.setProperty("--stage-line", look.stage.reference);
     document.body.dataset.theme = look.theme;
     layout(); // 판과 선의 색이 룩을 따르므로 다시 짓는다
@@ -312,9 +332,18 @@ export function createStage(host, motions, proxies) {
     return [1 + s, 1 / Math.sqrt(1 + s)];
   }
 
-  // 한 순간을 그린다. t는 0~1, 공의 자리는 GSAP이 움직여 둔 proxies 에서 읽는다
+  // 한 순간을 그린다. t는 0~1, 공의 자리는 GSAP이 움직여 둔 proxies 에서 읽는다.
+  // 모든 공은 t 하나로 자리가 정해진다. t도 입자도 그대로고 달리 바뀐 것도 없으면 그리지 않는다 —
+  // 출발 전과 도착 뒤의 쉼, 멈춤 동안이 그렇다
   function update(t) {
     if (!geometry) return;
+    const grain = look.grade.grain > 0 ? Math.floor((performance.now() / 1000) * GRAIN_FPS) : 0;
+    if (!dirty && t === shownT && grain === shownGrain) return;
+    dirty = false;
+    shownT = t;
+    shownGrain = grain;
+    place();
+
     for (const row of rows) {
       const p = proxies[row.index].p;
       const [sx, sy] = stretch(row.values, t);
@@ -338,7 +367,7 @@ export function createStage(host, motions, proxies) {
       row.playhead.position.x = px;
       row.playDot.position.set(px, Y(row.mapY(mode === "speed" ? speedFrom(row.values, t) : p)), 6);
     }
-    grade.uniforms.time.value = performance.now() / 1000;
+    grade.uniforms.seed.value = (grain * 0.618034) % 1; // 황금비 걸음이라 같은 입자가 되풀이되지 않는다
     composer.render();
   }
 

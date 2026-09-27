@@ -1,23 +1,23 @@
 /* 바깥 틀은 룩을 입지 않는다. 색보정 프로그램의 뷰어처럼, 화면 안만 보정되고 둘레는 담담하다.
    밝은 룩(PAPER)일 때만 둘레도 밝아진다 — 어두운 틀 안의 종이는 종이로 보이지 않는다. */
 :root {
-  --bg: #0b0c0e;
-  --bar: rgba(11, 12, 14, 0.92);
-  --line: #262a31;
-  --hover: #444a55;
-  --ink: #e8e6e1;
-  --dim: #8a8f99;
-  --faint: #5d636e;
+  --bg: #0c0c0c;
+  --bar: rgba(12, 12, 12, 0.92);
+  --line: #2a2a2a;
+  --hover: #4a4a4a;
+  --ink: #e6e6e6;
+  --dim: #8f8f8f;
+  --faint: #636363;
 }
 
 body[data-theme="light"] {
-  --bg: #f4f0e8;
-  --bar: rgba(244, 240, 232, 0.92);
-  --line: #d6cfc1;
-  --hover: #a39a88;
-  --ink: #2b2724;
-  --dim: #6f675b;
-  --faint: #9a917f;
+  --bg: #f0f0f0;
+  --bar: rgba(240, 240, 240, 0.92);
+  --line: #d0d0d0;
+  --hover: #9b9b9b;
+  --ink: #282828;
+  --dim: #686868;
+  --faint: #929292;
 }
 
 * { box-sizing: border-box; }
@@ -87,23 +87,27 @@ button.on { color: var(--bg); background: var(--ink); border-color: var(--ink); 
 
 main { padding: 12px 16px 24px; }
 
-/* 뷰어. 비네트가 가장자리를 눌러도 틀이 있으니 경계가 흠이 아니라 화면의 끝으로 읽힌다 */
+/* 뷰어. 비네트가 가장자리를 눌러도 틀이 있으니 경계가 흠이 아니라 화면의 끝으로 읽힌다.
+   hidden이 아니라 clip으로 자른다 — hidden은 스크롤 상자를 만들어 안쪽 띠가 화면에 달라붙지 못한다 */
 .stage {
   position: relative;
-  box-sizing: content-box; /* 높이를 캔버스 높이 그대로 주려고. 테두리는 그 바깥에 */
-  overflow: hidden;
+  box-sizing: content-box; /* 높이를 무대 높이 그대로 주려고. 테두리는 그 바깥에 */
+  overflow: clip;
   border: 1px solid var(--line);
   border-radius: 8px;
   user-select: none;
   --stage-ink: #ffffff;
-  --stage-muted: #8a8f99;
-  --stage-panel: #1b1d22;
-  --stage-line: #4a4f5a;
+  --stage-muted: #8f8f8f;
+  --stage-line: #4f4f4f;
 }
+
+/* 화면에 보이는 띠. 무대를 따라 내려가다 화면 위쪽에 달라붙는다. 캔버스는 이 띠만큼만 그린다 */
+.view { position: sticky; top: 0; overflow: hidden; }
 
 .stage canvas { display: block; }
 
-.labels { position: absolute; inset: 0; pointer-events: none; }
+/* 무대 좌표 그대로 놓이고, 스크롤만큼 통째로 올라간다 */
+.labels { position: absolute; inset: 0; pointer-events: none; will-change: transform; }
 
 .label {
   position: absolute;
@@ -114,7 +118,7 @@ main { padding: 12px 16px 24px; }
   font-size: 11px;
 }
 
-.label b { letter-spacing: 0.14em; font-weight: 700; }
+.label b { letter-spacing: 0.14em; font-weight: 700; color: var(--stage-ink); }
 .label span { color: var(--stage-muted); letter-spacing: 0; }
 
 /* 말과 짝을 이룬 GSAP 표기. 이 페이지에서 가장 중요한 글자라 따로 칸을 준다 */
@@ -129,13 +133,10 @@ main { padding: 12px 16px 24px; }
   letter-spacing: 0.02em;
 }
 
-/* 곡선 위에 얹히므로 바탕을 깔아 둔다. 비치게 두면 곡선과 글자가 서로를 읽기 어렵게 만든다 */
+/* 그래프 칸 오른쪽 바깥, 윗변 높이에 둔다. 칸이 정사각형으로 작아져 안에 얹으면 곡선을 가린다 */
 .peak {
   position: absolute;
-  transform: translateX(-100%);
-  padding: 0 4px;
   color: var(--stage-muted);
-  background: color-mix(in srgb, var(--stage-panel) 86%, transparent);
   font-size: 10px;
   line-height: 14px;
 }
