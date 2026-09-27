@@ -1,0 +1,155 @@
+/* 바깥 틀은 룩을 입지 않는다. 색보정 프로그램의 뷰어처럼, 화면 안만 보정되고 둘레는 담담하다.
+   밝은 룩(PAPER)일 때만 둘레도 밝아진다 — 어두운 틀 안의 종이는 종이로 보이지 않는다. */
+:root {
+  --bg: #0b0c0e;
+  --bar: rgba(11, 12, 14, 0.92);
+  --line: #262a31;
+  --hover: #444a55;
+  --ink: #e8e6e1;
+  --dim: #8a8f99;
+  --faint: #5d636e;
+}
+
+body[data-theme="light"] {
+  --bg: #f4f0e8;
+  --bar: rgba(244, 240, 232, 0.92);
+  --line: #d6cfc1;
+  --hover: #a39a88;
+  --ink: #2b2724;
+  --dim: #6f675b;
+  --faint: #9a917f;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+
+html, body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.03em;
+}
+
+.bar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 18px;
+  padding: 12px 22px;
+  background: var(--bar);
+  border-bottom: 1px solid var(--line);
+  backdrop-filter: blur(6px);
+}
+
+.mark { font-weight: 700; letter-spacing: 0.18em; }
+.sub { color: var(--dim); }
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+button {
+  font: inherit;
+  color: var(--dim);
+  background: transparent;
+  border: 1px solid var(--line);
+  padding: 5px 10px;
+  letter-spacing: 0.12em;
+  cursor: pointer;
+}
+
+button:hover { color: var(--ink); border-color: var(--hover); }
+button.on { color: var(--bg); background: var(--ink); border-color: var(--ink); }
+
+.seg { display: flex; }
+.seg button + button { border-left: none; }
+
+.dial {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--dim);
+  letter-spacing: 0.12em;
+}
+
+.dial b { color: var(--ink); font-weight: 500; }
+.dial input { width: 120px; accent-color: var(--ink); }
+
+.clock { color: var(--dim); min-width: 5em; text-align: right; }
+
+main { padding: 12px 16px 24px; }
+
+/* 뷰어. 비네트가 가장자리를 눌러도 틀이 있으니 경계가 흠이 아니라 화면의 끝으로 읽힌다 */
+.stage {
+  position: relative;
+  box-sizing: content-box; /* 높이를 캔버스 높이 그대로 주려고. 테두리는 그 바깥에 */
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  user-select: none;
+  --stage-ink: #ffffff;
+  --stage-muted: #8a8f99;
+  --stage-panel: #1b1d22;
+  --stage-line: #4a4f5a;
+}
+
+.stage canvas { display: block; }
+
+.labels { position: absolute; inset: 0; pointer-events: none; }
+
+.label {
+  position: absolute;
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  white-space: nowrap;
+  font-size: 11px;
+}
+
+.label b { letter-spacing: 0.14em; font-weight: 700; }
+.label span { color: var(--stage-muted); letter-spacing: 0; }
+
+/* 말과 짝을 이룬 GSAP 표기. 이 페이지에서 가장 중요한 글자라 따로 칸을 준다 */
+.label code {
+  font: inherit;
+  font-size: 10px;
+  line-height: 15px;
+  padding: 0 5px;
+  color: var(--stage-ink);
+  border: 1px solid color-mix(in srgb, var(--stage-line) 70%, transparent);
+  border-radius: 3px;
+  letter-spacing: 0.02em;
+}
+
+/* 곡선 위에 얹히므로 바탕을 깔아 둔다. 비치게 두면 곡선과 글자가 서로를 읽기 어렵게 만든다 */
+.peak {
+  position: absolute;
+  transform: translateX(-100%);
+  padding: 0 4px;
+  color: var(--stage-muted);
+  background: color-mix(in srgb, var(--stage-panel) 86%, transparent);
+  font-size: 10px;
+  line-height: 14px;
+}
+
+.hint {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 18px;
+  margin: 8px 2px 0;
+  color: var(--faint);
+  font-size: 11px;
+}
+
+#lookNote { color: var(--dim); }
+
+.noscript { padding: 80px 24px; text-align: center; }

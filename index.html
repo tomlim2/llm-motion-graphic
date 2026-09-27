@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LLM MOTION GRAPHIC — 속도 그래프</title>
+<link rel="stylesheet" href="./styles.css">
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/",
+    "gsap": "https://cdn.jsdelivr.net/npm/gsap@3.15.0/index.js",
+    "gsap/CustomEase": "https://cdn.jsdelivr.net/npm/gsap@3.15.0/CustomEase.js"
+  }
+}
+</script>
+</head>
+<body data-theme="dark">
+
+<header class="bar">
+  <span class="mark">LLM MOTION GRAPHIC</span>
+  <span class="sub">말 → GSAP 이즈 → three.js 룩</span>
+
+  <div class="controls">
+    <button id="play" type="button" class="on">PAUSE</button>
+
+    <div class="seg" role="group" aria-label="그래프">
+      <button type="button" data-mode="speed" class="on" title="속도 그래프 — 얼마나 빨리 움직이나">SPEED</button>
+      <button type="button" data-mode="value" title="값 그래프 — 어디에 있나">VALUE</button>
+    </div>
+
+    <div class="seg" role="group" aria-label="보조선">
+      <button type="button" data-toggle="ticks" class="on" title="같은 시간마다 공이 있던 자리">SPACING</button>
+      <button type="button" data-toggle="ghosts" class="on" title="지나온 자리의 잔상">TRAIL</button>
+      <button type="button" data-toggle="squash" class="on" title="빠를수록 늘어난다">SQUASH</button>
+    </div>
+
+    <div class="seg" role="group" aria-label="룩">
+      <button type="button" data-look="clean" title="1 — 보정 없음">CLEAN</button>
+      <button type="button" data-look="glow" class="on" title="2 — 블룸과 차가운 어둠">GLOW</button>
+      <button type="button" data-look="film" title="3 — 들뜬 검정과 입자">FILM</button>
+      <button type="button" data-look="paper" title="4 — 밝은 종이">PAPER</button>
+    </div>
+
+    <label class="dial">
+      <span>DURATION <b id="durationOut">1.4s</b></span>
+      <input id="duration" type="range" min="40" max="400" value="140" aria-label="한 번 가는 데 걸리는 시간">
+    </label>
+
+    <span class="clock" id="clock">t 0.00</span>
+  </div>
+</header>
+
+<main>
+  <div id="stage" class="stage" aria-label="움직임마다 속도 그래프와 그 속도로 움직이는 공"></div>
+  <p class="hint"><span id="lookNote"></span><span>그래프 칸 위를 끌면 시간을 손으로 움직입니다 · SPACE 재생/멈춤 · 1–4 룩</span></p>
+</main>
+
+<noscript><p class="noscript">이 페이지는 WebGL과 자바스크립트로 그립니다.</p></noscript>
+
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>

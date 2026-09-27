@@ -1,0 +1,8 @@
+{
+  "name": "llm-motion-graphic",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "scripts": { "start": "node serve.mjs" }
+}
