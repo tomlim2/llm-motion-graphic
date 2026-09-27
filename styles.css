@@ -1,23 +1,14 @@
-/* 바깥 틀은 룩을 입지 않는다. 색보정 프로그램의 뷰어처럼, 화면 안만 보정되고 둘레는 담담하다.
-   밝은 룩(PAPER)일 때만 둘레도 밝아진다 — 어두운 틀 안의 종이는 종이로 보이지 않는다. */
+/* 모션 릴의 한 장면처럼 짠다. 종이 한 장 위에 틀의 네 귀퉁이, 위에는 제목, 아래에는 시간.
+   바탕과 먹의 색은 룩이 정한다 — 무대(stage.js)가 룩을 입을 때 이 변수들을 같이 바꿔, 캔버스
+   안과 밖이 한 장으로 이어진다. 아래 값은 룩이 오기 전의 첫 화면, PAPER다. */
 :root {
-  --bg: #0c0c0c;
-  --bar: rgba(12, 12, 12, 0.92);
-  --line: #2a2a2a;
-  --hover: #4a4a4a;
-  --ink: #e6e6e6;
-  --dim: #8f8f8f;
-  --faint: #636363;
-}
-
-body[data-theme="light"] {
-  --bg: #f0f0f0;
-  --bar: rgba(240, 240, 240, 0.92);
-  --line: #d0d0d0;
-  --hover: #9b9b9b;
-  --ink: #282828;
-  --dim: #686868;
-  --faint: #929292;
+  --bg: #f4f1e9;
+  --ink: #100e08;
+  --dim: #7b7772;
+  --line: #d4d1c9;
+  --accent: #ff663f;
+  --edge: 20px; /* 화면 가장자리에서 틀까지 */
+  --inset: 56px; /* 화면 가장자리에서 글자까지 */
 }
 
 * { box-sizing: border-box; }
@@ -27,79 +18,92 @@ html, body {
   margin: 0;
   background: var(--bg);
   color: var(--ink);
-  font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
-  letter-spacing: 0.03em;
+  font: 11px/1.5 "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.02em;
 }
 
-.bar {
-  position: sticky;
-  top: 0;
-  z-index: 5;
+/* 글이 짧아도 시간 줄은 화면 아래에 선다 */
+body { display: flex; flex-direction: column; min-height: 100vh; }
+body[data-theme="dark"] { color-scheme: dark; }
+
+/* 틀의 네 귀퉁이. 화면에 붙어 있어 스크롤해도 움직이지 않는다 */
+.corners i {
+  position: fixed;
+  z-index: 10;
+  width: 22px;
+  height: 22px;
+  border: 0 solid var(--ink);
+  pointer-events: none;
+}
+.corners i:nth-child(1) { top: var(--edge); left: var(--edge); border-width: 1.5px 0 0 1.5px; }
+.corners i:nth-child(2) { top: var(--edge); right: var(--edge); border-width: 1.5px 1.5px 0 0; }
+.corners i:nth-child(3) { bottom: var(--edge); left: var(--edge); border-width: 0 0 1.5px 1.5px; }
+.corners i:nth-child(4) { bottom: var(--edge); right: var(--edge); border-width: 0 1.5px 1.5px 0; }
+
+/* 위아래의 작은 글자와 단추. 모두 대문자에 넓은 자간 */
+.meta,
+.transport {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 10px 18px;
-  padding: 12px 22px;
-  background: var(--bar);
-  border-bottom: 1px solid var(--line);
-  backdrop-filter: blur(6px);
+  justify-content: space-between;
+  gap: 8px 32px;
+  padding: 0 var(--inset);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
 }
 
-.mark { font-weight: 700; letter-spacing: 0.18em; }
-.sub { color: var(--dim); }
-
-.controls {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
-  margin-left: auto;
-}
+.meta { padding-top: calc(var(--edge) + 18px); }
+.mark { display: flex; flex-wrap: wrap; gap: 4px 28px; margin: 0; }
+.mark b { font-weight: 600; }
+.mark span { color: var(--dim); }
+.picks, .group { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 28px; }
 
 button {
   font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
   color: var(--dim);
-  background: transparent;
-  border: 1px solid var(--line);
-  padding: 5px 10px;
-  letter-spacing: 0.12em;
+  background: none;
+  border: none;
+  padding: 4px 0;
   cursor: pointer;
 }
+button:hover,
+button.on { color: var(--ink); }
 
-button:hover { color: var(--ink); border-color: var(--hover); }
-button.on { color: var(--bg); background: var(--ink); border-color: var(--ink); }
+/* 고르는 단추는 네모로 켜고 끈다. 레퍼런스의 박자 표시처럼 ■와 □로 읽힌다 */
+.seg { display: flex; gap: 14px; }
+.seg button::before { content: "□"; margin-right: 0.6em; letter-spacing: 0; }
+.seg button.on::before { content: "■"; }
 
-.seg { display: flex; }
-.seg button + button { border-left: none; }
-
-.dial {
+.title {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px 32px;
+  padding: 40px var(--inset) 18px calc(var(--inset) + 2vw);
+}
+
+h1 {
+  margin: 0;
+  font: italic 400 clamp(34px, 5.4vw, 72px) / 1 "Instrument Serif", Georgia, serif;
+  letter-spacing: -0.01em;
+}
+
+.subline {
+  margin: 0 0 0.6em auto;
   color: var(--dim);
-  letter-spacing: 0.12em;
+  font-size: 10px;
+  letter-spacing: 0.18em;
 }
 
-.dial b { color: var(--ink); font-weight: 500; }
-.dial input { width: 120px; accent-color: var(--ink); }
+main { flex: 1; padding: 0 var(--edge); }
 
-.clock { color: var(--dim); min-width: 5em; text-align: right; }
-
-main { padding: 12px 16px 24px; }
-
-/* 뷰어. 비네트가 가장자리를 눌러도 틀이 있으니 경계가 흠이 아니라 화면의 끝으로 읽힌다.
+/* 무대. 캔버스와 바깥이 같은 종이라 테두리를 두지 않는다.
    hidden이 아니라 clip으로 자른다 — hidden은 스크롤 상자를 만들어 안쪽 띠가 화면에 달라붙지 못한다 */
-.stage {
-  position: relative;
-  box-sizing: content-box; /* 높이를 무대 높이 그대로 주려고. 테두리는 그 바깥에 */
-  overflow: clip;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  user-select: none;
-  --stage-ink: #ffffff;
-  --stage-muted: #8f8f8f;
-  --stage-line: #4f4f4f;
-}
+.stage { position: relative; overflow: clip; user-select: none; }
 
 /* 화면에 보이는 띠. 무대를 따라 내려가다 화면 위쪽에 달라붙는다. 캔버스는 이 띠만큼만 그린다 */
 .view { position: sticky; top: 0; overflow: hidden; }
@@ -109,48 +113,50 @@ main { padding: 12px 16px 24px; }
 /* 무대 좌표 그대로 놓이고, 스크롤만큼 통째로 올라간다 */
 .labels { position: absolute; inset: 0; pointer-events: none; will-change: transform; }
 
+/* 줄 머리. 번호, 이름, 그 아래 GSAP 표기 — 이즈 이름이 곧 말을 옮긴 결과라 이름 바로 밑에 둔다 */
 .label {
   position: absolute;
-  display: flex;
-  gap: 10px;
+  display: grid;
+  grid-template-columns: 30px auto;
   align-items: baseline;
   white-space: nowrap;
-  font-size: 11px;
+  pointer-events: auto;
+  cursor: help;
+}
+.label i { font-style: normal; font-size: 10px; color: var(--accent); letter-spacing: 0.04em; }
+.label b { font-size: 13px; font-weight: 500; }
+.label code { grid-column: 2; font: inherit; font-size: 10px; color: var(--dim); }
+
+/* A, B. 트랙 양 끝 위에 가운데 맞춤 */
+.end { position: absolute; transform: translateX(-50%); font-size: 10px; font-weight: 600; letter-spacing: 0.12em; }
+
+.transport {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  padding-top: 14px;
+  padding-bottom: calc(var(--edge) + 16px);
+  background: var(--bg);
 }
 
-.label b { letter-spacing: 0.14em; font-weight: 700; color: var(--stage-ink); }
-.label span { color: var(--stage-muted); letter-spacing: 0; }
+.clock { font-variant-numeric: tabular-nums; }
+.t { color: var(--dim); min-width: 6em; font-variant-numeric: tabular-nums; text-transform: none; }
 
-/* 말과 짝을 이룬 GSAP 표기. 이 페이지에서 가장 중요한 글자라 따로 칸을 준다 */
-.label code {
-  font: inherit;
-  font-size: 10px;
-  line-height: 15px;
-  padding: 0 5px;
-  color: var(--stage-ink);
-  border: 1px solid color-mix(in srgb, var(--stage-line) 70%, transparent);
-  border-radius: 3px;
-  letter-spacing: 0.02em;
-}
+.dial { display: flex; align-items: center; gap: 12px; color: var(--dim); }
+.dial b { color: var(--ink); font-weight: 500; }
+.dial input { width: 110px; accent-color: var(--ink); }
 
-/* 그래프 칸 오른쪽 바깥, 윗변 높이에 둔다. 칸이 정사각형으로 작아져 안에 얹으면 곡선을 가린다 */
-.peak {
+/* 진행 막대. 틀 아랫변 바로 밑에 붙어 t만큼 찬다. 끌면 시간을 손으로 옮긴다 */
+.progress { position: absolute; left: var(--edge); right: var(--edge); bottom: calc(var(--edge) - 13px); height: 12px; cursor: ew-resize; }
+.progress::before { content: ""; position: absolute; inset: 50% 0 auto; height: 1px; background: var(--line); }
+.progress i {
   position: absolute;
-  color: var(--stage-muted);
-  font-size: 10px;
-  line-height: 14px;
+  inset: calc(50% - 0.5px) 0 auto;
+  height: 1.5px;
+  background: var(--ink);
+  transform: scaleX(0);
+  transform-origin: left;
+  will-change: transform;
 }
-
-.hint {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 4px 18px;
-  margin: 8px 2px 0;
-  color: var(--faint);
-  font-size: 11px;
-}
-
-#lookNote { color: var(--dim); }
 
 .noscript { padding: 80px 24px; text-align: center; }
