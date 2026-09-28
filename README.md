@@ -157,3 +157,4 @@ http://localhost:7500/?look=film&t=0.48
 | `src/stage.js` | three.js 무대. 그래프, 트랙, 공, 후처리 |
 | `src/main.js` | GSAP 마스터 타임라인, 다이얼, 손으로 시간 끌기 |
 | `serve.mjs` | 정적 서버. riso-graphic 것과 같다 |
+| `MAP.md` | 저장소 밖에 두고 쓰는 로컬 레퍼런스와 관련 프로젝트의 위치 |
